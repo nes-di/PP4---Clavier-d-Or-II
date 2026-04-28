@@ -25,7 +25,6 @@ public static class DatabaseSeeder
         q.Add(new Question { Theme = "Sports", Texte = "Dans quel sport Michael Jordan a-t-il excellé ?", OptionA = "Baseball", OptionZ = "Basket", OptionE = "Foot", OptionR = "Tennis", ReponseCorrecte = "Z" });
         q.Add(new Question { Theme = "Sports", Texte = "Combien de points vaut un essai au Rugby (sans transformation) ?", OptionA = "3", OptionZ = "5", OptionE = "7", OptionR = "2", ReponseCorrecte = "Z" });
         q.Add(new Question { Theme = "Sports", Texte = "Combien pèse précisément un ballon de foot officiel (grammes) ?", OptionA = "400", OptionZ = "450", OptionE = "430", OptionR = "410", ReponseCorrecte = "Z", EstBoss = true });
-
         q.Add(new Question { Theme = "Maths", Texte = "Combien font 7 x 6 ?", OptionA = "36", OptionZ = "42", OptionE = "48", OptionR = "54", ReponseCorrecte = "Z" });
         q.Add(new Question { Theme = "Maths", Texte = "Quelle est la racine carrée de 81 ?", OptionA = "7", OptionZ = "8", OptionE = "9", OptionR = "10", ReponseCorrecte = "E" });
         q.Add(new Question { Theme = "Maths", Texte = "Combien font 100 / 4 ?", OptionA = "20", OptionZ = "25", OptionE = "30", OptionR = "50", ReponseCorrecte = "Z" });
