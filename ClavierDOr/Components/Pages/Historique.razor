@@ -73,16 +73,13 @@
 
     protected override void OnInitialized()
     {
-        // On récupère les sauvegardes de la base de données
         sauvegardes = Context.Parties.OrderByDescending(p => p.DateSauvegarde).ToList();
     }
 
     private void Reprendre(Partie sauvegarde)
     {
-        // On utilise la méthode de reprise complète du GameService
         GameService.ChargerSauvegarde(sauvegarde);
         
-        // On redirige vers le jeu
         NavManager.NavigateTo("/quiz");
     }
 }

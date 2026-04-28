@@ -1,15 +1,15 @@
-using Microsoft.EntityFrameworkCore; // Importe Entity Framework Core pour gérer les interactions avec la base de données
-using ClavierDOr.Models; // Importe l'espace de noms Models pour accéder aux classes Question, Partie et Joueur
+using Microsoft.EntityFrameworkCore;
+using ClavierDOr.Models;
 
-namespace ClavierDOr.Data; // Définit l'espace de noms Data pour organiser les classes liées à la base de données
+namespace ClavierDOr.Data;
 
-public class AppDbContext : DbContext // Classe principale qui représente le contexte de la base de données, hérite de DbContext d'Entity Framework
+public class AppDbContext : DbContext
 {
-    public DbSet<Question> Questions { get; set; } // Propriété DbSet pour accéder et manipuler la table Questions dans la base de données
-    public DbSet<Partie> Parties { get; set; } // Propriété DbSet pour accéder et manipuler la table Parties dans la base de données
-    public DbSet<Joueur> Joueurs { get; set; } // Propriété DbSet pour accéder et manipuler la table Joueurs dans la base de données
+    public DbSet<Question> Questions { get; set; }
+    public DbSet<Partie> Parties { get; set; }
+    public DbSet<Joueur> Joueurs { get; set; }
 
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) // Constructeur qui prend les options de configuration de la base de données et les passe à la classe parente DbContext
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 }

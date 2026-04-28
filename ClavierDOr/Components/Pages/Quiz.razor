@@ -8,7 +8,6 @@
 <PageTitle>Quizz - Le Clavier d'Or</PageTitle>
 
 <div class="container mt-4">
-    @* CAS 1 : Sécurité *@
     @if (GameService.JoueurActuel == null)
     {
         <div class="alert alert-warning shadow text-center">
@@ -17,40 +16,42 @@
             <button class="btn btn-primary rounded-pill px-4" @onclick='() => NavManager.NavigateTo("/")'>Retour à l'accueil</button>
         </div>
     }
-    @* CAS 2 : La partie est terminée *@
     else if (GameService.PartieTerminee)
     {
-        <div class="alert alert-success text-center shadow p-5 border-success rounded-4">
-            <h1 class="display-4 fw-bold text-success">🏆 Victoire !</h1>
+        <div class="alert @(GameService.APerdu ? "alert-danger border-danger" : "alert-success border-success") text-center shadow p-5 rounded-4 animate__animated animate__zoomIn">
+            @if (GameService.APerdu)
+            {
+                <h1 class="display-4 fw-bold text-danger">💀 DÉFAITE...</h1>
+                <p class="fs-4 mt-3">Dommage ! Le code a eu raison de vous cette fois-ci.</p>
+            }
+            else
+            {
+                <h1 class="display-4 fw-bold text-success">🏆 VICTOIRE !</h1>
+                <p class="fs-4 mt-3">Félicitations ! Vous avez terrassé le Boss et conquis le Clavier d'Or.</p>
+            }
+            
             <h3 class="mt-3">Score final : <span class="badge bg-primary">@GameService.ScoreActuel points</span></h3>
             <p class="fs-4 mt-3">@GameService.MessageAction</p>
             
             <hr class="my-4" />
 
-            @{
-                var pdfBytes = PdfService.GenererCertificat(
-                    GameService.JoueurActuel.Pseudo, 
-                    GameService.RoleActuel!.Nom, 
-                    GameService.ScoreActuel
-                );
-                
-                var base64Pdf = Convert.ToBase64String(pdfBytes);
-                var pdfDataUrl = $"data:application/pdf;base64,{base64Pdf}";
+            @if (!GameService.APerdu)
+            {
+                <div class="mt-4">
+                    <h5 class="mb-3 text-muted">Bravo ! Récupérez votre récompense :</h5>
+                    <a href="@GetPdfDataUrl()" download="Certificat_@(GameService.JoueurActuel.Pseudo).pdf" class="btn btn-success btn-lg mx-2 shadow rounded-pill px-4">
+                        📄 Télécharger mon certificat (PDF)
+                    </a>
+                </div>
             }
-            
-            <div class="mt-4">
-                <h5 class="mb-3 text-muted">Bravo ! Récupérez votre récompense :</h5>
-                <a href="@pdfDataUrl" download="Certificat_@(GameService.JoueurActuel.Pseudo).pdf" class="btn btn-success btn-lg mx-2 shadow rounded-pill px-4">
-                    📄 Télécharger mon certificat (PDF)
-                </a>
 
+            <div class="mt-4">
                 <button class="btn btn-outline-primary btn-lg mx-2 rounded-pill px-4" @onclick='() => NavManager.NavigateTo("/")'>
                     🏠 Retour à l'accueil
                 </button>
             </div>
         </div>
     }
-    @* CAS 3 : La partie est en cours *@
     else if (GameService.QuestionEnCours != null)
     {
         <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-3">
@@ -78,38 +79,33 @@
         <div class="card shadow-lg mb-4 border-0 rounded-4 overflow-hidden">
             <div class="card-header bg-dark text-white p-3 d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-tag-fill me-2"></i>Thème : <strong>@GameService.QuestionEnCours.Theme</strong></span>
-                @if(GameService.QuestionEnCours.EstBoss) { 
-                    <span class="badge bg-danger p-2 px-3 border border-light animate__animated animate__pulse animate__infinite">👿 BOSS FINAL (POINTS x3)</span> 
+                @if(GameService.QuestionEnCours.EstBoss) {
+                    <span class="badge bg-danger p-2 px-3 border border-light animate__animated animate__pulse animate__infinite">👿 BOSS FINAL (POINTS x3)</span>
                 }
             </div>
             <div class="card-body p-5">
                 <h2 class="card-title text-center mb-5 fw-bold text-dark">@GameService.QuestionEnCours.Texte</h2>
 
                 <div class="d-grid gap-3">
-                    @* Chaque bouton vérifie s'il doit être masqué par le 50/50 *@
-                    <button class="btn btn-outline-dark btn-lg text-start py-3 shadow-sm transition-all" 
-                            style='display: @(GameService.OptionsMasquees.Contains("A") ? "none" : "block")'
-                            @onclick='() => Repondre("A")'>
-                        <span class="badge bg-dark me-3 px-3">A</span> @GameService.QuestionEnCours.OptionA
-                    </button>
+                    @foreach (var lettre in new[] { "A", "Z", "E", "R" })
+                    {
+                        var texteOption = lettre switch {
+                            "A" => GameService.QuestionEnCours.OptionA,
+                            "Z" => GameService.QuestionEnCours.OptionZ,
+                            "E" => GameService.QuestionEnCours.OptionE,
+                            "R" => GameService.QuestionEnCours.OptionR,
+                            _ => ""
+                        };
 
-                    <button class="btn btn-outline-dark btn-lg text-start py-3 shadow-sm transition-all" 
-                            style='display: @(GameService.OptionsMasquees.Contains("Z") ? "none" : "block")'
-                            @onclick='() => Repondre("Z")'>
-                        <span class="badge bg-dark me-3 px-3">Z</span> @GameService.QuestionEnCours.OptionZ
-                    </button>
-
-                    <button class="btn btn-outline-dark btn-lg text-start py-3 shadow-sm transition-all" 
-                            style='display: @(GameService.OptionsMasquees.Contains("E") ? "none" : "block")'
-                            @onclick='() => Repondre("E")'>
-                        <span class="badge bg-dark me-3 px-3">E</span> @GameService.QuestionEnCours.OptionE
-                    </button>
-
-                    <button class="btn btn-outline-dark btn-lg text-start py-3 shadow-sm transition-all" 
-                            style='display: @(GameService.OptionsMasquees.Contains("R") ? "none" : "block")'
-                            @onclick='() => Repondre("R")'>
-                        <span class="badge bg-dark me-3 px-3">R</span> @GameService.QuestionEnCours.OptionR
-                    </button>
+                        @if (!GameService.OptionsMasquees.Contains(lettre))
+                        {
+                            <button class="btn @GetButtonClass(lettre) btn-lg text-start py-3 shadow-sm transition-all fw-bold"
+                                    disabled="@isProcessing"
+                                    @onclick='() => Repondre(lettre)'>
+                                <span class="badge bg-dark me-3 px-3">@lettre</span> @texteOption
+                            </button>
+                        }
+                    }
                 </div>
             </div>
         </div>
@@ -125,7 +121,7 @@
                         <p class="mb-0 text-muted small">@GameService.RoleActuel?.Description</p>
                     </div>
                 </div>
-                
+
                 <div class="d-flex align-items-center gap-3">
                     @if (GameService.RoleActuel is ClavierDOr.Models.Roles.DeveloppeurBack)
                     {
@@ -135,14 +131,14 @@
                     }
                     else
                     {
-                        <button class="btn btn-warning btn-lg fw-bold shadow rounded-pill px-4" 
-                                disabled="@GameService.RoleActuel?.PouvoirUtilise" 
+                        <button class="btn btn-warning btn-lg fw-bold shadow rounded-pill px-4"
+                                disabled="@(GameService.RoleActuel?.PouvoirUtilise == true || isProcessing)"
                                 @onclick="UtiliserPouvoir">
                             ⚡ @(GameService.RoleActuel?.PouvoirUtilise == true ? "POUVOIR UTILISÉ" : "ACTIVER MON POUVOIR")
                         </button>
                     }
-                    
-                    <button class="btn btn-light border btn-sm rounded-pill px-3" @onclick="Sauvegarder">
+
+                    <button class="btn btn-light border btn-sm rounded-pill px-3" disabled="@isProcessing" @onclick="Sauvegarder">
                         💾 Sauvegarder
                     </button>
                 </div>
@@ -157,9 +153,30 @@
 </style>
 
 @code {
-    private void Repondre(string lettre)
+    private bool isProcessing = false;
+
+    private async Task Repondre(string lettre)
     {
+        if (isProcessing) return;
+        isProcessing = true;
+
         GameService.VerifierReponse(lettre);
+        StateHasChanged();
+        await Task.Delay(1000);
+
+        if (!GameService.PartieTerminee)
+        {
+            GameService.ChargerNouvelleQuestion();
+        }
+
+        isProcessing = false;
+        StateHasChanged();
+    }
+
+    private string GetButtonClass(string lettre)
+    {
+        if (GameService.LettreSelectionnee != lettre) return "btn-outline-dark";
+        return GameService.DerniereReponseCorrecte == true ? "btn-success text-white" : "btn-danger text-white";
     }
 
     private void UtiliserPouvoir()
@@ -171,5 +188,19 @@
     {
         GameService.SauvegarderPartieEnCours();
         NavManager.NavigateTo("/historique");
+    }
+
+    private string GetPdfDataUrl()
+    {
+        if (GameService.JoueurActuel == null || GameService.RoleActuel == null) return "#";
+
+        var pdfBytes = PdfService.GenererCertificat(
+            GameService.JoueurActuel.Pseudo, 
+            GameService.RoleActuel.Nom, 
+            GameService.ScoreActuel
+        );
+        
+        var base64Pdf = Convert.ToBase64String(pdfBytes);
+        return $"data:application/pdf;base64,{base64Pdf}";
     }
 }

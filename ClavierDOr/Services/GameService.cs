@@ -1,143 +1,205 @@
-using ClavierDOr.Data; // Importe l'espace de noms Data pour accéder à AppDbContext
-using ClavierDOr.Models; // Importe les modèles comme Joueur, Question
-using ClavierDOr.Models.Roles; // Importe les rôles comme Role, RoleFactory
-using Microsoft.EntityFrameworkCore; // Importe Entity Framework pour les requêtes LINQ
+using ClavierDOr.Data;
+using ClavierDOr.Models;
+using ClavierDOr.Models.Roles;
+using Microsoft.EntityFrameworkCore;
 
-namespace ClavierDOr.Services; // Définit l'espace de noms Services
+namespace ClavierDOr.Services;
 
-public class GameService // Classe principale pour gérer la logique du jeu
+public class GameService
 {
-    private readonly AppDbContext _context; // Contexte de base de données injecté
-    public Joueur? JoueurActuel { get; private set; } // Joueur actuel de la partie
-    public Role? RoleActuel { get; private set; } // Rôle choisi par le joueur
-    public int ScoreActuel { get; private set; } // Score cumulé du joueur
-    public Question? QuestionEnCours { get; private set; } // Question actuellement posée
-    public string ThemeActuel { get; private set; } = string.Empty; // Thème sélectionné
-    public string MessageAction { get; private set; } = string.Empty; // Message affiché au joueur
-    public bool PartieTerminee { get; private set; } = false; // Indique si la partie est finie
+    private readonly AppDbContext _context;
 
-    // --- NOUVEAUTÉ : Pour le 50/50 --- // Section pour le pouvoir 50/50
-    public List<string> OptionsMasquees { get; private set; } = new(); // Liste des options masquées par le pouvoir
+    public Joueur? JoueurActuel { get; private set; }
+    public Role? RoleActuel { get; private set; }
+    public int ScoreActuel { get; private set; }
+    public Question? QuestionEnCours { get; private set; }
+    public string ThemeActuel { get; private set; } = string.Empty;
+    public string MessageAction { get; private set; } = string.Empty;
+    public bool PartieTerminee { get; private set; } = false;
 
-    private List<Question> _questionsDeLaPartie = new(); // Liste des questions de la partie
-    private int _indexQuestionActuelle = 0; // Index de la question en cours
-    
-    public int NumeroQuestion => _indexQuestionActuelle; // Propriété calculée pour le numéro de question
-    public int TotalQuestions => 10; // Nombre total de questions par partie
+    private List<Question> _questionsDeLaPartie = new();
+    private int _indexQuestionActuelle = 0;
 
-    public GameService(AppDbContext context) { _context = context; } // Constructeur injectant le contexte
+    public int NumeroQuestion => _indexQuestionActuelle;
+    public int TotalQuestions => 10;
 
-    public List<string> GetThemesDisponibles() => _context.Questions.Select(q => q.Theme).Distinct().ToList(); // Récupère les thèmes disponibles
+    public List<string> OptionsMasquees { get; private set; } = new();
+    public bool? DerniereReponseCorrecte { get; private set; }
+    public string? LettreSelectionnee { get; private set; }
+    public bool APerdu { get; private set; } = false;
 
-    public void DemarrerPartie(string pseudo, string roleChoisi, string themeChoisi) // Démarre une nouvelle partie
+    public GameService(AppDbContext context) { _context = context; }
+
+    public List<string> GetThemesDisponibles() => _context.Questions.Select(q => q.Theme).Distinct().ToList();
+
+    public void DemarrerPartie(string pseudo, string roleChoisi, string thèmeChoisi)
     {
-        JoueurActuel = new Joueur { Pseudo = pseudo, RoleChoisi = roleChoisi }; // Crée le joueur
-        RoleActuel = RoleFactory.CreerRole(roleChoisi); // Crée le rôle
-        ThemeActuel = themeChoisi; // Définit le thème
-        ScoreActuel = 0; // Réinitialise le score
-        PartieTerminee = false; // Partie non terminée
-        _indexQuestionActuelle = 0; // Réinitialise l'index
+        JoueurActuel = new Joueur { Pseudo = pseudo, RoleChoisi = roleChoisi };
+        RoleActuel = RoleFactory.CreerRole(roleChoisi);
+        ThemeActuel = thèmeChoisi;
+        ScoreActuel = 0;
+        PartieTerminee = false;
+        APerdu = false;
+        _indexQuestionActuelle = 0;
+        DerniereReponseCorrecte = null;
+        LettreSelectionnee = null;
 
-        var questionsNormales = _context.Questions // Récupère les questions normales
-            .Where(q => q.Theme == themeChoisi && !q.EstBoss) // Filtre par thème et non-boss
-            .AsEnumerable() // Passe en mémoire
-            .OrderBy(x => Guid.NewGuid()) // Mélange aléatoirement
-            .Take(9) // Prend 9 questions
-            .ToList(); // Convertit en liste
+        var questionsNormales = _context.Questions
+            .Where(q => q.Theme == thèmeChoisi && !q.EstBoss)
+            .AsEnumerable()
+            .OrderBy(x => Guid.NewGuid())
+            .Take(9)
+            .ToList();
 
-        var questionBoss = _context.Questions // Récupère la question boss
-            .Where(q => q.Theme == themeChoisi && q.EstBoss) // Filtre par thème et boss
-            .AsEnumerable() // Passe en mémoire
-            .OrderBy(x => Guid.NewGuid()) // Mélange
-            .Take(1) // Prend 1
-            .FirstOrDefault(); // Première ou null
+        var questionBoss = _context.Questions
+            .Where(q => q.Theme == thèmeChoisi && q.EstBoss)
+            .AsEnumerable()
+            .OrderBy(x => Guid.NewGuid())
+            .Take(1)
+            .FirstOrDefault();
 
-        _questionsDeLaPartie = questionsNormales; // Assigne les normales
-        if (questionBoss != null) _questionsDeLaPartie.Add(questionBoss); // Ajoute la boss si existe
+        _questionsDeLaPartie = questionsNormales;
+        if (questionBoss != null) _questionsDeLaPartie.Add(questionBoss);
 
-        MessageAction = $"La quête commence ! 9 questions + 1 BOSS FINAL."; // Message de début
-        ChargerNouvelleQuestion(); // Charge la première question
+        MessageAction = $"La quête commence ! 9 questions + 1 BOSS FINAL.";
+        ChargerNouvelleQuestion();
     }
 
-    public void VerifierReponse(string reponseChoisie) // Vérifie la réponse donnée
+    public void VerifierReponse(string reponseChoisie)
     {
-        if (QuestionEnCours == null) return; // Si pas de question, rien
+        if (QuestionEnCours == null || PartieTerminee) return;
 
-        if (reponseChoisie == QuestionEnCours.ReponseCorrecte) // Si bonne réponse
+        LettreSelectionnee = reponseChoisie;
+
+        if (reponseChoisie == QuestionEnCours.ReponseCorrecte)
         {
-            if (QuestionEnCours.EstBoss) // Si c'est une boss
+            DerniereReponseCorrecte = true;
+
+            if (QuestionEnCours.EstBoss)
             {
-                ScoreActuel += 30; // +30 points
-                MessageAction = "🔥 INCROYABLE ! Boss vaincu : +30 POINTS !"; // Message victoire boss
+                ScoreActuel += 30;
+                MessageAction = "🔥 INCROYABLE ! Boss vaincu : +30 POINTS !";
             }
-            else // Sinon normale
+            else
             {
-                ScoreActuel += 10; // +10 points
-                MessageAction = "Bonne réponse ! +10 points."; // Message bonne réponse
+                ScoreActuel += 10;
+                MessageAction = "Bonne réponse ! +10 points.";
             }
-            ChargerNouvelleQuestion(); // Passe à la suivante
         }
-        else // Mauvaise réponse
+        else
         {
-            if (RoleActuel is DeveloppeurBack && !RoleActuel.PouvoirUtilise) // Si Back et pouvoir disponible
+            DerniereReponseCorrecte = false;
+
+            if (RoleActuel is DeveloppeurBack && !RoleActuel.PouvoirUtilise)
             {
-                MessageAction = RoleActuel.ActiverPouvoir(); // Active le pouvoir
-                // On ne change pas de question, le joueur peut retenter // Commentaire
+                MessageAction = RoleActuel.ActiverPouvoir();
             }
-            else // Sinon échec
+            else
             {
-                MessageAction = QuestionEnCours.EstBoss ? "Le Boss vous a terrassé..." : "Échec... Partie terminée."; // Message échec
-                PartieTerminee = true; // Termine la partie
-                EnregistrerScoreFinal(); // Enregistre le score
+                MessageAction = QuestionEnCours.EstBoss ? "Le Boss vous a terrassé..." : "Échec... Partie terminée.";
+                PartieTerminee = true;
+                APerdu = true;
+                EnregistrerScoreFinal();
             }
         }
     }
 
-    public void ChargerNouvelleQuestion() // Charge la prochaine question
+    public void ChargerNouvelleQuestion()
     {
-        // On vide systématiquement les options masquées à chaque nouvelle question // Vide les masquées
+        DerniereReponseCorrecte = null;
+        LettreSelectionnee = null;
         OptionsMasquees.Clear();
 
-        if (_indexQuestionActuelle < _questionsDeLaPartie.Count) // Si il y a encore des questions
+        if (_indexQuestionActuelle < _questionsDeLaPartie.Count)
         {
-            QuestionEnCours = _questionsDeLaPartie[_indexQuestionActuelle]; // Assigne la question
-            _indexQuestionActuelle++; // Incrémente l'index
+            QuestionEnCours = _questionsDeLaPartie[_indexQuestionActuelle];
+            _indexQuestionActuelle++;
         }
-        else // Plus de questions
+        else
         {
-            PartieTerminee = true; // Termine
-            QuestionEnCours = null; // Pas de question
-            MessageAction = "🏆 QUÊTE TERMINÉE ! Vous êtes un Maître du Clavier !"; // Message fin
-            EnregistrerScoreFinal(); // Enregistre
+            PartieTerminee = true;
+            APerdu = false;
+            QuestionEnCours = null;
+            MessageAction = "🏆 QUÊTE TERMINÉE ! Vous êtes un Maître du Clavier !";
+            EnregistrerScoreFinal();
         }
     }
 
-    public void UtiliserPouvoir() // Utilise le pouvoir du rôle
-    { 
-        if (RoleActuel == null || RoleActuel.PouvoirUtilise || QuestionEnCours == null) return; // Conditions d'utilisation
+    public void UtiliserPouvoir()
+    {
+        if (RoleActuel == null || RoleActuel.PouvoirUtilise || QuestionEnCours == null) return;
 
-        MessageAction = RoleActuel.ActiverPouvoir(); // Active le pouvoir
+        MessageAction = RoleActuel.ActiverPouvoir();
 
-        if (RoleActuel is DeveloppeurFront) // Si Front
+        if (RoleActuel is DeveloppeurFront)
         {
-            ChargerNouvelleQuestion(); // Saute la question
+            ChargerNouvelleQuestion();
         }
-        else if (RoleActuel is DeveloppeurMobile) // Si Mobile
+        else if (RoleActuel is DeveloppeurMobile)
         {
-            // --- LOGIQUE DU 50/50 --- // Logique 50/50
-            var toutesOptions = new List<string> { "A", "Z", "E", "R" }; // Toutes les options
-            // On retire la bonne réponse de la liste des candidats à l'effacement // Retire la bonne
+            var toutesOptions = new List<string> { "A", "Z", "E", "R" };
             toutesOptions.Remove(QuestionEnCours.ReponseCorrecte);
 
-            // On mélange les 3 mauvaises et on en prend 2 // Mélange et prend 2
             var aMasquer = toutesOptions.OrderBy(x => Guid.NewGuid()).Take(2).ToList();
-            OptionsMasquees.AddRange(aMasquer); // Ajoute aux masquées
+            OptionsMasquees.AddRange(aMasquer);
         }
     }
 
-    public void SauvegarderPartieEnCours() { if (JoueurActuel == null || PartieTerminee) return; var s = new Partie { Pseudo = JoueurActuel.Pseudo, RoleChoisi = JoueurActuel.RoleChoisi, Theme = ThemeActuel, ScoreAtteint = ScoreActuel, IndexQuestion = _indexQuestionActuelle - 1, PouvoirDejaUtilise = RoleActuel?.PouvoirUtilise ?? false, DateSauvegarde = DateTime.Now }; _context.Parties.Add(s); _context.SaveChanges(); } // Sauvegarde la partie en cours
-    
-    public void ChargerSauvegarde(Partie s) { JoueurActuel = new Joueur { Pseudo = s.Pseudo, RoleChoisi = s.RoleChoisi }; RoleActuel = RoleFactory.CreerRole(s.RoleChoisi); RoleActuel.PouvoirUtilise = s.PouvoirDejaUtilise; ThemeActuel = s.Theme; ScoreActuel = s.ScoreAtteint; PartieTerminee = false; _questionsDeLaPartie = _context.Questions.Where(q => q.Theme == s.Theme).ToList(); _indexQuestionActuelle = s.IndexQuestion; if (_indexQuestionActuelle < _questionsDeLaPartie.Count) { QuestionEnCours = _questionsDeLaPartie[_indexQuestionActuelle]; _indexQuestionActuelle++; } } // Charge une sauvegarde
-    
-    private void EnregistrerScoreFinal() { if (JoueurActuel == null) return; var j = _context.Joueurs.FirstOrDefault(x => x.Pseudo == JoueurActuel.Pseudo); if (j != null) { if (ScoreActuel > j.MeilleurScore) j.MeilleurScore = ScoreActuel; } else { JoueurActuel.MeilleurScore = ScoreActuel; _context.Joueurs.Add(JoueurActuel); } _context.SaveChanges(); } // Enregistre le score final
+    public void SauvegarderPartieEnCours()
+    {
+        if (JoueurActuel == null || PartieTerminee) return;
+
+        var s = new Partie
+        {
+            Pseudo = JoueurActuel.Pseudo,
+            RoleChoisi = JoueurActuel.RoleChoisi,
+            Theme = ThemeActuel,
+            ScoreAtteint = ScoreActuel,
+            IndexQuestion = _indexQuestionActuelle - 1,
+            PouvoirDejaUtilise = RoleActuel?.PouvoirUtilise ?? false,
+            DateSauvegarde = DateTime.Now
+        };
+
+        _context.Parties.Add(s);
+        _context.SaveChanges();
+    }
+
+    public void ChargerSauvegarde(Partie s)
+    {
+        JoueurActuel = new Joueur { Pseudo = s.Pseudo, RoleChoisi = s.RoleChoisi };
+        RoleActuel = RoleFactory.CreerRole(s.RoleChoisi);
+        RoleActuel.PouvoirUtilise = s.PouvoirDejaUtilise;
+        ThemeActuel = s.Theme;
+        ScoreActuel = s.ScoreAtteint;
+        PartieTerminee = false;
+        APerdu = false;
+
+        _questionsDeLaPartie = _context.Questions.Where(q => q.Theme == s.Theme).ToList();
+        _indexQuestionActuelle = s.IndexQuestion;
+
+        if (_indexQuestionActuelle < _questionsDeLaPartie.Count)
+        {
+            QuestionEnCours = _questionsDeLaPartie[_indexQuestionActuelle];
+            _indexQuestionActuelle++;
+        }
+    }
+
+    private void EnregistrerScoreFinal()
+    {
+        if (JoueurActuel == null) return;
+
+        var j = _context.Joueurs.FirstOrDefault(x => x.Pseudo == JoueurActuel.Pseudo);
+
+        if (j != null)
+        {
+            if (ScoreActuel > j.MeilleurScore) j.MeilleurScore = ScoreActuel;
+        }
+        else
+        {
+            JoueurActuel.MeilleurScore = ScoreActuel;
+            _context.Joueurs.Add(JoueurActuel);
+        }
+
+        _context.SaveChanges();
+    }
 }
