@@ -1,0 +1,117 @@
+﻿@page "/" @* Définit la route de la page d'accueil *@
+@rendermode InteractiveServer @* Active le mode interactif côté serveur pour les boutons *@
+@inject ClavierDOr.Services.GameService GameService @* Injecte le service de jeu *@
+@inject NavigationManager NavManager @* Injecte le gestionnaire de navigation *@
+
+<PageTitle>Accueil - Le Clavier d'Or</PageTitle> @* Titre de la page *@
+
+<div class="container py-5"> @* Conteneur principal avec padding *@
+    <div class="text-center mb-5"> @* Section centrée avec marge *@
+        <h1 class="display-3 fw-bold text-primary">Le Clavier d'Or</h1> @* Titre principal *@
+        <p class="text-muted fs-5">L'aventure dont vous êtes le développeur.</p> @* Sous-titre *@
+    </div> @* Fin section titre *@
+
+    <div class="row justify-content-center"> @* Ligne centrée *@
+        <div class="col-lg-8"> @* Colonne large *@
+            <div class="card border-0 shadow-lg p-4 p-md-5 bg-white rounded-4"> @* Carte principale *@
+                
+                @* --- ÉTAPE 1 : IDENTITÉ --- *@ @* Commentaire section identité *@
+                <section class="mb-5"> @* Section identité *@
+                    <h4 class="fw-bold mb-3"><span class="badge bg-primary me-2">1</span> Qui êtes-vous ?</h4> @* Titre section *@
+                    <input @bind="pseudo" @bind:event="oninput" class="form-control form-control-lg border-2" placeholder="Votre pseudo..." /> @* Input pour pseudo *@
+                </section> @* Fin section identité *@
+
+                @* --- ÉTAPE 2 : RÔLE --- *@ @* Commentaire section rôle *@
+                <section class="mb-5"> @* Section rôle *@
+                    <h4 class="fw-bold mb-3"><span class="badge bg-primary me-2">2</span> Choisissez votre spécialité</h4> @* Titre section *@
+                    <div class="row g-3"> @* Ligne pour rôles *@
+                        @foreach (var r in roles) @* Boucle sur les rôles *@
+                        {
+                            <div class="col-md-4"> @* Colonne pour chaque rôle *@
+                                <div class="card h-100 role-card @(role == r.Key ? "active-role" : "")" @onclick="() => role = r.Key"> @* Carte rôle *@
+                                    <div class="card-body text-center"> @* Corps carte *@
+                                        <div class="fs-1 mb-2">@r.Value.Icon</div> @* Icône *@
+                                        <h6 class="fw-bold">@r.Value.Label</h6> @* Label *@
+                                        <small class="text-muted d-block" style="font-size: 0.75rem;">@r.Value.Desc</small> @* Description *@
+                                    </div> @* Fin corps *@
+                                </div> @* Fin carte *@
+                            </div> @* Fin colonne *@
+                        }
+                    </div> @* Fin ligne rôles *@
+                </section> @* Fin section rôle *@
+
+                @* --- ÉTAPE 3 : THÈME --- *@ @* Commentaire section thème *@
+                <section class="mb-5"> @* Section thème *@
+                    <h4 class="fw-bold mb-3"><span class="badge bg-primary me-2">3</span> Choisissez votre domaine</h4> @* Titre section *@
+                    <div class="d-flex flex-wrap gap-2"> @* Conteneur flex pour thèmes *@
+                        @if (themesDisponibles.Any()) @* Si thèmes disponibles *@
+                        {
+                            @foreach (var t in themesDisponibles) @* Boucle sur thèmes *@
+                            {
+                                <button class="btn @(theme == t ? "btn-primary" : "btn-outline-primary") px-4 py-2 rounded-pill" @* Bouton thème *@
+                                        @onclick="() => theme = t"> @* Clic pour sélectionner *@
+                                    @t @* Texte bouton *@
+                                </button> @* Fin bouton *@
+                            }
+                        }
+                        else @* Sinon *@
+                        {
+                            <p class="text-danger small italic">Chargement des thèmes (ou base vide)...</p> @* Message erreur *@
+                        }
+                    </div> @* Fin conteneur thèmes *@
+                </section> @* Fin section thème *@
+
+                @* --- BOUTON FINAL --- *@ @* Commentaire bouton final *@
+                <div class="text-center mt-4"> @* Conteneur centré *@
+                    <button class="btn btn-primary btn-xl px-5 py-3 fw-bold shadow-sm @(PeutLancer ? "" : "disabled")" @* Bouton lancer *@
+                            @onclick="LancerJeu"> @* Clic pour lancer *@
+                        LANCER LE DÉFI 🚀 @* Texte bouton *@
+                    </button> @* Fin bouton *@
+                    @if (!PeutLancer) { @* Si pas prêt *@
+                        <p class="text-muted mt-2 small">Remplissez tous les champs pour commencer</p> @* Message *@
+                    }
+                </div> @* Fin conteneur bouton *@
+
+            </div> @* Fin carte *@
+        </div> @* Fin colonne *@
+    </div> @* Fin ligne *@
+</div> @* Fin conteneur *@
+
+<style> @* Styles CSS *@
+    .role-card { cursor: pointer; transition: all 0.2s ease; border: 2px solid #eee; } @* Style carte rôle *@
+    .role-card:hover { border-color: #0d6efd; background-color: #f8f9ff; transform: translateY(-3px); } @* Hover carte *@
+    .active-role { border-color: #0d6efd !important; background-color: #eef4ff !important; box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2); } @* Actif carte *@
+    .btn-xl { font-size: 1.25rem; border-radius: 50px; } @* Style bouton xl *@
+</style> @* Fin styles *@
+
+@code { @* Code C# *@
+    private string pseudo = ""; @* Variable pseudo *@
+    private string role = "Front"; @* Variable rôle *@
+    private string theme = ""; @* Variable thème *@
+    private List<string> themesDisponibles = new(); @* Liste thèmes *@
+
+    // Dictionnaire pour gérer l'affichage sympa des rôles @* Commentaire dictionnaire *@
+    private Dictionary<string, (string Label, string Icon, string Desc)> roles = new() @* Dictionnaire rôles *@
+    {
+        { "Front", ("Front-End", "🎨", "Pouvoir : Passer une question") }, @* Rôle Front *@
+        { "Back", ("Back-End", "⚙️", "Pouvoir : 2ème essai auto") }, @* Rôle Back *@
+        { "Mobile", ("Mobile", "📱", "Pouvoir : Indice (50/50)") } @* Rôle Mobile *@
+    };
+
+    private bool PeutLancer => !string.IsNullOrWhiteSpace(pseudo) && !string.IsNullOrWhiteSpace(theme); @* Propriété calculée peut lancer *@
+
+    protected override void OnInitialized() @* Méthode initialisation *@
+    {
+        themesDisponibles = GameService.GetThemesDisponibles(); @* Récupère thèmes *@
+        if (themesDisponibles.Any()) theme = themesDisponibles.First(); @* Définit thème par défaut *@
+    }
+
+    private void LancerJeu() @* Méthode lancer jeu *@
+    {
+        if (PeutLancer) @* Si peut lancer *@
+        {
+            GameService.DemarrerPartie(pseudo, role, theme); @* Démarre partie *@
+            NavManager.NavigateTo("/quiz"); @* Navigue vers quiz *@
+        }
+    }
+} @* Fin code *@

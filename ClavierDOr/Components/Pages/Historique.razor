@@ -1,0 +1,88 @@
+@page "/historique"
+@rendermode InteractiveServer
+@using ClavierDOr.Models
+@inject ClavierDOr.Data.AppDbContext Context
+@inject ClavierDOr.Services.GameService GameService
+@inject NavigationManager NavManager
+
+<PageTitle>Historique - Le Clavier d'Or</PageTitle>
+
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">Historique des parties</h1>
+        <p class="text-muted">Retrouvez vos exploits et reprenez vos sauvegardes.</p>
+    </div>
+
+    @if (sauvegardes == null || !sauvegardes.Any())
+    {
+        <div class="alert alert-info shadow-sm text-center p-4 rounded-4">
+            <div class="fs-1 mb-2">📂</div>
+            <h4>Aucune sauvegarde trouvée</h4>
+            <p class="mb-0">Lancez une partie et sauvegardez-la pour la retrouver ici.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-primary text-white">
+                        <tr>
+                            <th class="ps-4">Date</th>
+                            <th>Joueur</th>
+                            <th>Thème</th>
+                            <th>Score</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in sauvegardes)
+                        {
+                            <tr>
+                                <td class="ps-4 text-muted">@p.DateSauvegarde.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="fw-bold text-dark">@p.Pseudo</td>
+                                <td><span class="badge rounded-pill bg-outline-primary border border-primary text-primary px-3">@p.Theme</span></td>
+                                <td><span class="fw-bold fs-5 text-success">@p.ScoreAtteint pts</span></td>
+                                <td class="text-center pe-4">
+                                    <button class="btn btn-success btn-sm px-4 rounded-pill shadow-sm" @onclick="() => Reprendre(p)">
+                                        🚀 Reprendre
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="text-center mt-4">
+        <button class="btn btn-outline-secondary px-4 rounded-pill" @onclick='() => NavManager.NavigateTo("/")'>
+            Retour à l'accueil
+        </button>
+    </div>
+</div>
+
+<style>
+    .bg-outline-primary { background-color: #f0f7ff; }
+    .table-hover tbody tr:hover { background-color: #f8faff; }
+</style>
+
+@code {
+    private List<Partie>? sauvegardes;
+
+    protected override void OnInitialized()
+    {
+        // On récupère les sauvegardes de la base de données
+        sauvegardes = Context.Parties.OrderByDescending(p => p.DateSauvegarde).ToList();
+    }
+
+    private void Reprendre(Partie sauvegarde)
+    {
+        // On utilise la méthode de reprise complète du GameService
+        GameService.ChargerSauvegarde(sauvegarde);
+        
+        // On redirige vers le jeu
+        NavManager.NavigateTo("/quiz");
+    }
+}
