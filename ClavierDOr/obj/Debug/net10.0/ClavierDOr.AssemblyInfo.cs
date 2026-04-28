@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ClavierDOr")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9a9840372d437c542fcb937920971d0dd3d6ae6c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ClavierDOr")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ClavierDOr")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
